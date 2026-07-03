@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "extensionId": "irodori.s3-tables",
   "visibility": "public",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "connector": {
     "id": "s3Tables.connector",
     "engine": "s3Tables",
@@ -30,69 +30,71 @@
         "connectionString"
       ],
       "defaultPort": 443,
-        "fields": [
-          {
-            "id": "region",
-            "label": "AWS region",
-            "type": "string",
-            "option": "region",
-            "required": true
-          },
-          {
-            "id": "catalogType",
-            "label": "Catalog type",
-            "type": "string",
-            "option": "catalogType",
-            "default": "s3TablesIcebergRest",
-            "required": true
-          },
-          {
-            "id": "tableBucketArn",
-            "label": "Table bucket ARN",
-            "type": "string",
-            "option": "tableBucketArn",
-            "required": true
-          },
-          {
-            "id": "namespace",
-            "label": "Namespace",
-            "type": "string",
-            "option": "namespace"
-          },
-          {
-            "id": "tableName",
-            "label": "Table",
-            "type": "string",
-            "option": "tableName"
-          },
-          {
-            "id": "accessModel",
-            "label": "Access model",
-            "type": "string",
-            "option": "accessModel",
-            "default": "iam"
-          },
-          {
-            "id": "credentialVending",
-            "label": "Credential vending",
-            "type": "boolean",
-            "option": "credentialVending",
-            "default": true
-          },
-          {
-            "id": "endpoint",
-            "label": "Custom endpoint",
-            "type": "uri",
-            "profileField": "host"
+      "fields": [
+        {
+          "id": "region",
+          "label": "AWS region",
+          "type": "string",
+          "option": "region",
+          "required": true
+        },
+        {
+          "id": "catalogType",
+          "label": "Catalog type",
+          "type": "string",
+          "option": "catalogType",
+          "default": "s3TablesIcebergRest",
+          "required": true
+        },
+        {
+          "id": "tableBucketArn",
+          "label": "Table bucket ARN",
+          "type": "string",
+          "option": "tableBucketArn",
+          "required": true
+        },
+        {
+          "id": "namespace",
+          "label": "Namespace",
+          "type": "string",
+          "option": "namespace"
+        },
+        {
+          "id": "tableName",
+          "label": "Table",
+          "type": "string",
+          "option": "tableName"
+        },
+        {
+          "id": "accessModel",
+          "label": "Access model",
+          "type": "string",
+          "option": "accessModel",
+          "default": "iam"
+        },
+        {
+          "id": "credentialVending",
+          "label": "Credential vending",
+          "type": "boolean",
+          "option": "credentialVending",
+          "default": true
+        },
+        {
+          "id": "endpoint",
+          "label": "Custom endpoint",
+          "type": "uri",
+          "profileField": "host"
         }
       ]
     },
     "authMethods": [
       "connectionString",
+      "awsDefaultCredentialsChain",
       "awsSigV4",
       "awsProfile",
       "awsSso",
       "webIdentity",
+      "awsAssumeRole",
       "sessionToken",
       "customDriverOptions"
     ],
