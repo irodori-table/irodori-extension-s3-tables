@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "extensionId": "irodori.s3-tables",
   "visibility": "public",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "connector": {
     "id": "s3Tables.connector",
     "engine": "s3Tables",
