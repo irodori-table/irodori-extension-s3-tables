@@ -615,7 +615,12 @@ mod tests {
             }
         });
         assert_eq!(
-            setting_value(&request, "s3_access_key_id", &["s3AccessKeyId", "accessKeyId"]).as_deref(),
+            setting_value(
+                &request,
+                "s3_access_key_id",
+                &["s3AccessKeyId", "accessKeyId"]
+            )
+            .as_deref(),
             Some("AKIAIOSFODNN7EXAMPLE")
         );
         assert_eq!(
@@ -642,7 +647,12 @@ mod tests {
             }
         });
         assert_eq!(
-            setting_value(&request, "s3_access_key_id", &["s3AccessKeyId", "accessKeyId"]).as_deref(),
+            setting_value(
+                &request,
+                "s3_access_key_id",
+                &["s3AccessKeyId", "accessKeyId"]
+            )
+            .as_deref(),
             Some("AKIAEXPLICITEXPLICIT")
         );
         assert_eq!(
@@ -660,7 +670,11 @@ mod tests {
     fn a_user_that_is_not_an_access_key_id_is_not_treated_as_a_credential() {
         let request = json!({ "profile": { "user": "staging", "password": "secret" } });
         assert_eq!(
-            setting_value(&request, "s3_access_key_id", &["s3AccessKeyId", "accessKeyId"]),
+            setting_value(
+                &request,
+                "s3_access_key_id",
+                &["s3AccessKeyId", "accessKeyId"]
+            ),
             None
         );
         assert!(looks_like_access_key_id("ASIAIOSFODNN7EXAMPLE"));
