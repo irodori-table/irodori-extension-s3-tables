@@ -246,20 +246,49 @@ fn configure_connection(conn: &duckdb::Connection, request: &Value) -> Result<()
     Ok(())
 }
 
+/// The desktop connection form gives this engine two credential boxes labelled
+/// "AWS profile / access key" and "Secret / session token", so a profile filled
+/// in through the UI arrives with `user`/`password` rather than the explicit
+/// option names. `password` is unambiguous — it is the secret access key.
+/// `user` is not, so disambiguate it by shape: an access key id is 20 uppercase
+/// alphanumerics beginning with `A` (`AKIA…` long-term, `ASIA…` temporary).
+/// Anything else is a profile name and is not a credential.
+fn looks_like_access_key_id(value: &str) -> bool {
+    value.len() == 20
+        && value.starts_with('A')
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+}
+
+fn form_access_key_id(request: &Value) -> Option<String> {
+    option_string(request, &["user", "username"]).filter(|value| looks_like_access_key_id(value))
+}
+
+/// Resolve each DuckDB S3 setting from the first candidate key that is present.
+/// The explicit option names come first, so a profile that carries both an
+/// explicit `accessKeyId` and a leftover `user` uses the explicit one.
+fn setting_value(request: &Value, setting: &str, fields: &[&str]) -> Option<String> {
+    option_string(request, fields).or_else(|| match setting {
+        "s3_access_key_id" => form_access_key_id(request),
+        "s3_secret_access_key" => option_string(request, &["password"]),
+        _ => None,
+    })
+}
+
 fn apply_settings(conn: &duckdb::Connection, request: &Value) -> Result<(), String> {
-    for (field, setting) in [
-        ("s3Region", "s3_region"),
-        ("region", "s3_region"),
-        ("s3Endpoint", "s3_endpoint"),
-        ("s3UrlStyle", "s3_url_style"),
-        ("s3AccessKeyId", "s3_access_key_id"),
-        ("accessKeyId", "s3_access_key_id"),
-        ("s3SecretAccessKey", "s3_secret_access_key"),
-        ("secretAccessKey", "s3_secret_access_key"),
-        ("s3SessionToken", "s3_session_token"),
-        ("sessionToken", "s3_session_token"),
+    for (setting, fields) in [
+        ("s3_region", &["s3Region", "region"][..]),
+        ("s3_endpoint", &["s3Endpoint"][..]),
+        ("s3_url_style", &["s3UrlStyle"][..]),
+        ("s3_access_key_id", &["s3AccessKeyId", "accessKeyId"][..]),
+        (
+            "s3_secret_access_key",
+            &["s3SecretAccessKey", "secretAccessKey"][..],
+        ),
+        ("s3_session_token", &["s3SessionToken", "sessionToken"][..]),
     ] {
-        if let Some(value) = option_string(request, &[field]) {
+        if let Some(value) = setting_value(request, setting, fields) {
             let sql = format!("set {setting} = {}", sql_string(&value));
             conn.execute_batch(&sql)
                 .map_err(|err| format!("DuckDB setting {setting} failed: {err}"))?;
@@ -572,5 +601,69 @@ mod tests {
             parquet_pattern("s3://bucket/table"),
             "s3://bucket/table/**/*.parquet"
         );
+    }
+
+    #[test]
+    fn takes_s3_credentials_from_the_connection_form_fields() {
+        // The connection form labels `user`/`password` "AWS profile / access
+        // key" and "Secret / session token", so this is the shape a profile
+        // filled in through the UI arrives as.
+        let request = json!({
+            "profile": {
+                "user": "AKIAIOSFODNN7EXAMPLE",
+                "password": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            }
+        });
+        assert_eq!(
+            setting_value(&request, "s3_access_key_id", &["s3AccessKeyId", "accessKeyId"]).as_deref(),
+            Some("AKIAIOSFODNN7EXAMPLE")
+        );
+        assert_eq!(
+            setting_value(
+                &request,
+                "s3_secret_access_key",
+                &["s3SecretAccessKey", "secretAccessKey"]
+            )
+            .as_deref(),
+            Some("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+        );
+    }
+
+    #[test]
+    fn explicit_s3_options_win_over_the_form_fields() {
+        let request = json!({
+            "profile": {
+                "user": "AKIAIOSFODNN7EXAMPLE",
+                "password": "from-the-form",
+                "options": {
+                    "accessKeyId": "AKIAEXPLICITEXPLICIT",
+                    "secretAccessKey": "explicit-secret"
+                }
+            }
+        });
+        assert_eq!(
+            setting_value(&request, "s3_access_key_id", &["s3AccessKeyId", "accessKeyId"]).as_deref(),
+            Some("AKIAEXPLICITEXPLICIT")
+        );
+        assert_eq!(
+            setting_value(
+                &request,
+                "s3_secret_access_key",
+                &["s3SecretAccessKey", "secretAccessKey"]
+            )
+            .as_deref(),
+            Some("explicit-secret")
+        );
+    }
+
+    #[test]
+    fn a_user_that_is_not_an_access_key_id_is_not_treated_as_a_credential() {
+        let request = json!({ "profile": { "user": "staging", "password": "secret" } });
+        assert_eq!(
+            setting_value(&request, "s3_access_key_id", &["s3AccessKeyId", "accessKeyId"]),
+            None
+        );
+        assert!(looks_like_access_key_id("ASIAIOSFODNN7EXAMPLE"));
+        assert!(!looks_like_access_key_id("staging"));
     }
 }
