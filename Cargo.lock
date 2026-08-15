@@ -939,7 +939,7 @@ dependencies = [
 
 [[package]]
 name = "irodori-extension-s3-tables"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "duckdb",
  "irodori-connector-abi",
